@@ -405,4 +405,3 @@ pytest tests/performance
 - Maintain test coverage above 80%
 - Use type hints
 - Document all changes
-```
