@@ -1,4 +1,3 @@
-```markdown
 # AI DevOps System Documentation
 
 ## Table of Contents
@@ -407,10 +406,3 @@ pytest tests/performance
 - Use type hints
 - Document all changes
 ```
-
-Would you like me to:
-1. Add more specific component documentation?
-2. Create API documentation?
-3. Add more troubleshooting guides?
-4. Create deployment guides?
-5. Add more code examples?
