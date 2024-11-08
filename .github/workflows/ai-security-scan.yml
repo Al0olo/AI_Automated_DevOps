@@ -1,0 +1,87 @@
+name: AI Security Scan
+
+on:
+  push:
+    branches: [ master, develop ]
+  pull_request:
+    branches: [ master ]
+  schedule:
+    - cron: '0 0 * * *'  # Daily scan
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Security Scanner
+        uses: security/ai-scanner-setup@v2
+        with:
+          api-key: ${{ secrets.SECURITY_API_KEY }}
+
+      - name: Dependency Vulnerability Scan
+        id: deps-scan
+        uses: security/dep-scan@v2
+        with:
+          severity: high
+
+      - name: AI Infrastructure Scan
+        id: infra-scan
+        run: |
+          python src/security/ai_infrastructure_scanner.py
+          echo "::set-output name=results::$(cat security-scan.json)"
+
+      - name: AI Secret Detection
+        uses: security/ai-secret-detect@v1
+        with:
+          scan-level: deep
+
+      - name: SAST Analysis
+        id: sast
+        uses: security/ai-sast@v1
+        with:
+          languages: python,javascript,yaml
+          
+      - name: Container Security Scan
+        if: hashFiles('Dockerfile') != ''
+        uses: security/ai-container-scan@v1
+        with:
+          image-ref: ${{ github.repository }}:${{ github.sha }}
+
+      - name: Process Results
+        run: |
+          python src/security/process_security_results.py \
+            --deps-scan ${{ steps.deps-scan.outputs.report }} \
+            --infra-scan ${{ steps.infra-scan.outputs.results }} \
+            --sast ${{ steps.sast.outputs.findings }}
+
+      - name: Report Security Issues
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('security-report.json', 'utf8'));
+            
+            const summary = `
+            ## Security Scan Results 🛡️
+            
+            ${report.criticalCount} Critical Issues
+            ${report.highCount} High Issues
+            ${report.moderateCount} Moderate Issues
+            
+            ### Critical Findings
+            ${report.criticalIssues.map(i => `- ${i.description}`).join('\n')}
+            
+            ### Recommended Actions
+            ${report.recommendations.join('\n')}
+            `;
+            
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Security Issues Detected',
+              body: summary,
+              labels: ['security', 'urgent']
+            });

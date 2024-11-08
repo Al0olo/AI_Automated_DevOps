@@ -1,0 +1,77 @@
+name: AI Performance Analysis
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+  push:
+    branches: [ master, develop ]
+
+jobs:
+  performance-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Performance Tools
+        uses: performance/setup-tools@v1
+        with:
+          tools: lighthouse, k6, artillery
+
+      - name: AI Load Test Generation
+        id: load-test
+        run: |
+          python src/performance/ai_test_generator.py
+          echo "::set-output name=test-plan::$(cat test-plan.json)"
+
+      - name: Execute Load Tests
+        id: execute-tests
+        run: |
+          k6 run src/performance/k6-script.js
+          artillery run src/performance/artillery-script.yml
+
+      - name: AI Performance Analysis
+        id: perf-analysis
+        run: |
+          python src/performance/ai_analyzer.py \
+            --load-results load-test-results.json \
+            --metrics-data metrics.json
+          echo "::set-output name=analysis::$(cat performance-analysis.json)"
+
+      - name: Resource Optimization Suggestions
+        id: optimization
+        run: |
+          python src/performance/ai_optimizer.py
+          echo "::set-output name=suggestions::$(cat optimization.json)"
+
+      - name: Report Performance Results
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const analysis = require('${{ steps.perf-analysis.outputs.analysis }}');
+            const suggestions = require('${{ steps.optimization.outputs.suggestions }}');
+            
+            const summary = `
+            ## Performance Analysis Results 📊
+            
+            ### Key Metrics
+            - Response Time: ${analysis.responseTime}ms (${analysis.responseTimeChange}%)
+            - Throughput: ${analysis.throughput} req/s
+            - Error Rate: ${analysis.errorRate}%
+            
+            ### Performance Impact
+            ${analysis.impact}
+            
+            ### Optimization Suggestions
+            ${suggestions.recommendations.join('\n')}
+            
+            ### Resource Usage Analysis
+            ${analysis.resourceAnalysis}
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: summary
+            });

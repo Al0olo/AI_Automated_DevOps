@@ -1,0 +1,81 @@
+name: AI System Monitoring
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'  # Every 15 minutes
+  workflow_dispatch:
+
+jobs:
+  system-monitoring:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Configure Monitoring Tools
+        uses: monitoring/setup-tools@v1
+        with:
+          tools: prometheus,grafana
+
+      - name: AI Metric Collection
+        id: metrics
+        run: |
+          python src/monitoring/ai_metric_collector.py
+          echo "::set-output name=metrics::$(cat system-metrics.json)"
+
+      - name: AI Anomaly Detection
+        id: anomalies
+        run: |
+          python src/monitoring/ai_anomaly_detector.py \
+            --metrics ${{ steps.metrics.outputs.metrics }}
+          echo "::set-output name=results::$(cat anomaly-results.json)"
+
+      - name: AI Pattern Analysis
+        id: patterns
+        run: |
+          python src/monitoring/ai_pattern_analyzer.py \
+            --metrics ${{ steps.metrics.outputs.metrics }}
+          echo "::set-output name=analysis::$(cat pattern-analysis.json)"
+
+      - name: AI Health Assessment
+        id: health
+        run: |
+          python src/monitoring/ai_health_checker.py \
+            --metrics ${{ steps.metrics.outputs.metrics }} \
+            --anomalies ${{ steps.anomalies.outputs.results }} \
+            --patterns ${{ steps.patterns.outputs.analysis }}
+
+      - name: Create Monitoring Report
+        if: always()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const metrics = require('${{ steps.metrics.outputs.metrics }}');
+            const anomalies = require('${{ steps.anomalies.outputs.results }}');
+            const patterns = require('${{ steps.patterns.outputs.analysis }}');
+            
+            const summary = `
+            ## System Health Report 🏥
+            
+            ### System Metrics
+            ${metrics.summary}
+            
+            ### Detected Anomalies
+            ${anomalies.findings.map(a => `- ${a.description} (Severity: ${a.severity})`).join('\n')}
+            
+            ### Pattern Analysis
+            ${patterns.insights}
+            
+            ### Recommendations
+            ${patterns.recommendations.join('\n')}
+            `;
+            
+            if (anomalies.findings.length > 0) {
+              github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: '⚠️ System Anomalies Detected',
+                body: summary,
+                labels: ['monitoring', 'automated']
+              });
+            }

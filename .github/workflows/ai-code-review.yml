@@ -1,0 +1,48 @@
+name: AI Code Review
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  ai-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          
+      - name: AI Code Analysis
+        uses: microsoft/code-analysis@v1
+        with:
+          languages: python,javascript
+          suggestions-level: detailed
+          
+      - name: Security Scan
+        uses: security-ai/deep-scan@v2
+        with:
+          severity: high
+          
+      - name: Performance Analysis
+        uses: performance-ai/analyzer@v1
+        with:
+          threshold: medium
+          
+      - name: Post Results
+        uses: actions/github-script@v4
+        with:
+          script: |
+            const results = require('./results.json');
+            await github.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## AI Code Review Results\n${JSON.stringify(results, null, 2)}`
+            });
