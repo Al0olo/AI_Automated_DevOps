@@ -4,3 +4,203 @@ app:
   environment: production
   debug: false
   log_level: INFO
+
+deployment:
+  strategies:
+    canary:
+      enabled: true
+      initial_weight: 20
+      increment: 20
+      interval: 300  # seconds
+      max_failures: 2
+      metrics_threshold:
+        error_rate: 1
+        latency_p95: 500
+    blue_green:
+      enabled: true
+      health_check_path: /health
+      health_check_timeout: 30
+      rollback_timeout: 300
+    rolling:
+      enabled: true
+      max_surge: 25%
+      max_unavailable: 25%
+  validation:
+    required: true
+    timeout: 60
+    endpoints:
+      - /health
+      - /metrics
+      - /ready
+  resources:
+    limits:
+      cpu: 1
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+
+monitoring:
+  enabled: true
+  interval: 30  # seconds
+  retention_period: 30  # days
+  anomaly_detection:
+    threshold: 0.8
+    sensitivity: medium
+    training_period: 7  # days
+    min_data_points: 1000
+  metrics:
+    - name: cpu_usage
+      type: gauge
+      threshold:
+        warning: 70
+        critical: 90
+    - name: memory_usage
+      type: gauge
+      threshold:
+        warning: 80
+        critical: 95
+    - name: disk_usage
+      type: gauge
+      threshold:
+        warning: 75
+        critical: 90
+    - name: response_time
+      type: histogram
+      threshold:
+        warning: 1000  # ms
+        critical: 2000  # ms
+    - name: error_rate
+      type: counter
+      threshold:
+        warning: 1  # percent
+        critical: 5  # percent
+  alerts:
+    channels:
+      email:
+        enabled: true
+        smtp_server: smtp.company.com
+        smtp_port: 587
+        sender: aidevops@company.com
+        recipients:
+          - devops-team@company.com
+          - sre-team@company.com
+      slack:
+        enabled: true
+        webhook_url: https://hooks.slack.com/services/xxx/yyy/zzz
+        channel: "#devops-alerts"
+      pagerduty:
+        enabled: true
+        service_key: xxxxxxxxxxxxx
+        severity_mapping:
+          critical: P1
+          warning: P2
+          info: P3
+
+infrastructure:
+  provider: aws
+  regions:
+    - us-east-1
+    - eu-west-1
+  kubernetes:
+    version: 1.24
+    node_groups:
+      - name: general
+        instance_type: t3.large
+        min_size: 3
+        max_size: 10
+      - name: cpu-optimized
+        instance_type: c5.2xlarge
+        min_size: 2
+        max_size: 8
+  networking:
+    vpc_cidr: 10.0.0.0/16
+    subnets:
+      private:
+        - 10.0.1.0/24
+        - 10.0.2.0/24
+      public:
+        - 10.0.101.0/24
+        - 10.0.102.0/24
+
+security:
+  scanning:
+    enabled: true
+    interval: 86400  # daily
+    fail_on_critical: true
+    scanners:
+      - vulnerability
+      - compliance
+      - configuration
+      - secret
+  compliance:
+    standards:
+      - PCI-DSS
+      - HIPAA
+      - SOC2
+      - GDPR
+    checks:
+      encryption:
+        required: true
+        algorithms:
+          - AES-256
+          - RSA-2048
+      authentication:
+        mfa_required: true
+        session_timeout: 3600
+  vulnerability_management:
+    auto_fix: false
+    ignore_list:
+      - CVE-2023-XXXX
+    severity_threshold: medium
+  network:
+    allowed_ips:
+      - 10.0.0.0/8
+      - 172.16.0.0/12
+    restricted_ports:
+      - 22
+      - 3389
+
+database:
+  type: postgresql
+  host: db.company.com
+  port: 5432
+  name: aidevops
+  pool:
+    min_size: 5
+    max_size: 20
+  backup:
+    enabled: true
+    retention: 30
+    schedule: "0 2 * * *"
+
+incident_response:
+  auto_remediation:
+    enabled: true
+    max_attempts: 3
+    blackout_period: 300
+  classification:
+    model_type: random_forest
+    confidence_threshold: 0.8
+    features:
+      - error_rate
+      - response_time
+      - cpu_usage
+      - memory_usage
+  escalation:
+    levels:
+      - level: 1
+        timeout: 900
+        notifiers:
+          - devops-team
+      - level: 2
+        timeout: 1800
+        notifiers:
+          - sre-team
+      - level: 3
+        timeout: 3600
+        notifiers:
+          - management
+  runbooks:
+    enabled: true
+    repository: https://github.com/company/runbooks
