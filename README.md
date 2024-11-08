@@ -370,7 +370,7 @@ metrics = await client.monitoring.get_metrics()
 
 1. **Clone Repository**
    ```bash
-   git clone https://github.com/company/ai-devops
+   git clone https://github.com/al0olo/ai_automated_devops
    cd ai-devops
    ```
 
