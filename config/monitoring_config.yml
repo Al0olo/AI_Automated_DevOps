@@ -1,0 +1,56 @@
+monitoring:
+  enabled: true
+  interval: 30  # seconds
+  retention_period: 30  # days
+  anomaly_detection:
+    threshold: 0.8
+    sensitivity: medium
+    training_period: 7  # days
+    min_data_points: 1000
+  metrics:
+    - name: cpu_usage
+      type: gauge
+      threshold:
+        warning: 70
+        critical: 90
+    - name: memory_usage
+      type: gauge
+      threshold:
+        warning: 80
+        critical: 95
+    - name: disk_usage
+      type: gauge
+      threshold:
+        warning: 75
+        critical: 90
+    - name: response_time
+      type: histogram
+      threshold:
+        warning: 1000  # ms
+        critical: 2000  # ms
+    - name: error_rate
+      type: counter
+      threshold:
+        warning: 1  # percent
+        critical: 5  # percent
+  alerts:
+    channels:
+      email:
+        enabled: true
+        smtp_server: smtp.company.com
+        smtp_port: 587
+        sender: aidevops@company.com
+        recipients:
+          - devops-team@company.com
+          - sre-team@company.com
+      slack:
+        enabled: true
+        webhook_url: https://hooks.slack.com/services/xxx/yyy/zzz
+        channel: "#devops-alerts"
+      pagerduty:
+        enabled: true
+        service_key: xxxxxxxxxxxxx
+        severity_mapping:
+          critical: P1
+          warning: P2
+          info: P3

@@ -1,0 +1,25 @@
+infrastructure:
+  provider: aws
+  regions:
+    - us-east-1
+    - eu-west-1
+  kubernetes:
+    version: 1.24
+    node_groups:
+      - name: general
+        instance_type: t3.large
+        min_size: 3
+        max_size: 10
+      - name: cpu-optimized
+        instance_type: c5.2xlarge
+        min_size: 2
+        max_size: 8
+  networking:
+    vpc_cidr: 10.0.0.0/16
+    subnets:
+      private:
+        - 10.0.1.0/24
+        - 10.0.2.0/24
+      public:
+        - 10.0.101.0/24
+        - 10.0.102.0/24

@@ -1,0 +1,35 @@
+name: AI DevOps Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  aidevops-pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Configure AI DevOps
+        uses: aidevops/setup-action@v1
+        with:
+          config-path: './config/config.yaml'
+          
+      - name: Security Scan
+        uses: aidevops/security-scan@v1
+        with:
+          scan-type: 'full'
+          fail-on: 'critical'
+          
+      - name: Performance Analysis
+        uses: aidevops/performance-analysis@v1
+        with:
+          threshold: 'p95_latency=200ms'
+          
+      - name: Smart Deploy
+        uses: aidevops/deploy@v1
+        with:
+          strategy: 'auto'
+          environment: 'production'
